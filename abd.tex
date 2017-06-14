@@ -1,0 +1,256 @@
+\documentclass[a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper, top=4cm, bottom=4cm, left=4cm, right=4cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{graphicx}
+%\usepackage[urw-garamond]{mathdesign}
+\usepackage{csquotes}
+
+\usepackage[square,numbers]{natbib}
+\bibliographystyle{abbrvnat}
+
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usepackage{mathrsfs}
+\usepackage{hyperref}
+
+\newcommand{\fail}{\mathrm{not } \ \xspace}
+%\newcommand{\from}{\mathrm{\ \xspace :- \ \xspace}}
+\newcommand{\from}{\ensuremath{\leftarrow}}
+\newcommand{\problem}{\ensuremath{\mathscr{P}}}
+
+\newcommand{\entails}{\models}
+
+% Least model (of a Horn program).
+\newcommand{\lm}{\mathrm{lm}}
+
+% Set of stable models (of a program).
+\newcommand{\stm}{\mathrm{STM}}
+\newcommand{\sol}{\mathrm{Sol}}
+
+% Entails according to well founded semantics.
+\newcommand{\wf}{\ensuremath{\entails_{wf}}}
+
+% Entails according to stable model semantics using brave reasoning
+\newcommand{\brave}{\ensuremath{\entails_{st}^b}}
+
+% Entails according to stable model semantics using cautious reasoning
+\newcommand{\caut}{\ensuremath{\entails_{st}^c}}
+
+% Selective Linear Definite-clause with Negation as Failure
+\newcommand{\sldnf}{\ensuremath{\vdash_{NF}}}
+
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+
+\begin{document}
+\begin{center}
+
+{\bfseries\Large{Abduction and Logic Programming}\\[3mm]}
+%Lorenz~Leutgeb \\ \href{mailto:e1127842@student.tuwien.ac.at}{\texttt{e1127842@student.tuwien.ac.at}}
+
+\end{center}
+\begin{abstract}
+Abduction is a form of reasoning aimed at obtaining explanations for observations under a given theory. We summarize how abduction can be modeled by deduction for the case where the theory is a logic program. A framework that accommodates a wide range of abduction problems in view of different application domains by varying semantics of inference towards the explanation is used and explained.
+\end{abstract}
+
+\section{Introduction}
+\label{intro}
+
+Abduction, next to deduction and induction, is a form of logical reasoning where, given a theory and some observations, the goal is to find an explanation for the observations under the theory. It is a very intuitive reasoning task, carried out by the human mind in a continuous fashion, which somehow relates to what one might call \enquote{common sense}.
+
+This paper is a result of the fascination that abduction can be modeled by deduction (the connection is made clear in \cite{DBLP:journals/logcom/ConsoleDT91}). Logic programming as a versatile tool formalizing different kinds of abduction problems (a framework is suitable to cover various applications is proposed in \cite{DBLP:journals/tcs/EiterGL97}) is explored.
+
+In this section, we import and establish context: First, revisiting logical reasoning we distinguish between deduction, induction and abduction using short examples. Secondly, logic programming (as a form of declarative programming) is informally described and very briefly contrasted with imperative programming, which is much more widespread in application.
+
+In Section \ref{sec:prelim}, we define logic programs as they are crucial to the works of \citet{DBLP:journals/logcom/ConsoleDT91} and \citet{DBLP:journals/tcs/EiterGL97}.
+
+In Section \ref{sec:ded} the connection between abduction and deduction described in \cite{DBLP:journals/logcom/ConsoleDT91} is elabroted, while in Section \ref{sec:fw} a framework generalizing abduction problems modeled by logic programming \cite{DBLP:journals/tcs/EiterGL97} is explained.
+
+\subsection{Deduction, Induction and Abduction}
+
+We use the work of \citet{dih} to highlight the underlying schema and differences between three types of reasoning by means of syllogisms:
+
+\begin{center}
+Deduction\\[2mm]
+\begin{tabular}{cll}
+             & \emph{Rule.}   & All the beans from this bag are white.\\
+             & \emph{Case.}   & These beans are from this bag.\\
+$\therefore$ & \emph{Result.} & These beans are white.
+\end{tabular}\\[4mm]
+
+Induction\\[2mm]
+\begin{tabular}{cll}
+             & \emph{Case.}   & These beans are from this bag.\\
+             & \emph{Result.} & These beans are white.\\
+$\therefore$ & \emph{Rule.}   & All the beans from this bag are white.
+\end{tabular}\newpage
+
+Abduction\\[2mm]
+\begin{tabular}{cll}
+             & \emph{Rule.}   & All the beans from this bag are white.\\
+             & \emph{Result.} & These beans are white.\\
+$\therefore$ & \emph{Case.}   & These beans are from this bag.
+\end{tabular}
+\end{center}
+
+The three types of reasoning are obtained by arranging rule, case and result so that two of them act as premises, concluding the third. Three examples: (1) Mathematics heavily depends on deduction to derive more explicit from basic axioms. (2) Physicists employ experiments and their results to derive rules, which can be regarded as induction. (3) A physician uses medical knowledge to explain the symptoms of his patient, a diagnosis obtained by abduction.
+
+To find out more about the philosophical roots of abduction or Peirce's Logic generally, refer to \cite{sep-abduction} resp.~\cite{peirce1940philosophical}.
+
+Abduction is of particular interest in the field of artificial intelligence, when it comes to generating generating explanations, diagnoses and plans but has also been applied to speech recognition, vision and learning \cite[Introductions]{DBLP:journals/logcom/ConsoleDT91,DBLP:journals/tcs/EiterGL97}.
+
+In the above syllogism showing abduction, the rule corresponds with certain knowledge or a theory, while the result stands for an observation and the case maps to an explanation, diagnosis, plan and similar.
+
+It is important to note that abduction might result in multiple explanations and it is in general not sound, as some explanations (or diagnoses) may turn out false \cite{DBLP:journals/tcs/EiterGL97}. However, this is only at the meta-level, meaning that the theory can be adjusted to lead to better results.
+
+\subsection{Logic Programming}
+\label{sec:logprog}
+
+Logic programming is regarded a very powerful approach to declarative programming. Rather than an algorithm to solve a problem, the problem itself (and its solution, to some extent) is described. As a logic program does not define any kind of control flow, it is not executed directly, like imperative programs, but instead put into a solver (which in turn is also a program). Similar to how imperative programs are first written, then (in some cases) interpreted by an interpreter, a logic program is written and then solutions are obtained by a solver.
+
+Take the Clique problem for example: Given a graph its solution is the set of all fully connected subgraphs. Writing an imperative program (be it in Java, C\#, Go or a similar language) to solve Clique is not straightforward, though certainly a reasonable task for a second-semester computer science student. The student has to account for the control flow of the program, keep track of the solutions already obtained, and so forth. Using a non-hosted language she might even have to deal with allocating an deallocating memory. With logic programming in turn, the task of the programmer is just to formalize the problem in a way that the solver understands, which normally turns out to be the easier task.
+
+When first looking at the structure of logic programs (see Section \ref{sec:prelim}) the structure of the rules, essentially implications, appears strikingly similar to the deductive nature of mathematical logic. This makes logic programming an interesting vehicle for encoding theories and knowledge in the form of rules. What is not so obvious, is how these programs can be transformed in such a way that abduction is modeled deductively, as we will see in Section \ref{sec:ded}.
+
+For an introduction to and overview of Answer Set Programming, see \cite{DBLP:conf/rweb/EiterIK09}.
+
+\section{Preliminaries}
+\label{sec:prelim}
+
+We briefly revisit the logic programs, as they are fundamental to both \citep{DBLP:journals/logcom/ConsoleDT91} and \cite{DBLP:journals/tcs/EiterGL97}.
+
+\begin{definition}[{see \cite[Slide 15]{ewbs}}]
+	A \emph{rule} is an ordered pair of the form $$a_1 \vee \ldots \vee a_m \from b_1 \wedge \ldots \wedge b_k \wedge \fail b_{k+1} \wedge \ldots \wedge \fail b_n$$ where $a_1, \ldots, a_m, b_1, \ldots, b_n$ are literals, $\mathrm{not}$ is \emph{negation as failure} (or \emph{default negation}), $a_1 \vee \ldots a_m$ is the \emph{head} of $r$ and $b_1, \ldots, b_k, \fail b_{k+1}, \ldots, \fail b_n$ is the \emph{body} of $r$.
+	
+	Some more concrete classes of rules are of interest: A rule is a \emph{fact} if $n = 0$ and $m \geq 1$; \emph{basic} if $n = k$ and $m \geq 1$; \emph{non-disjunctive} if $m = 1$; \emph{normal} if it is non-disjunctive and contains no strong negation $\neg$; \emph{Horn} if it is normal and basic; \emph{ground} if all its literals are ground.
+\end{definition}
+
+\begin{definition} \label{def:lp}
+	A logic program (usually denoted $LP$) is a finite set of rules. Analogous to the classification of a rule, a program is basic, normal, Horn etc. if all of its rules are.
+\end{definition}
+
+When evaluating logic programs, there is no canonical semantics, especially considering incomplete information and default negation. Two possible approaches are described in \ref{sec:fw}, as the core idea of the framework in \cite{DBLP:journals/tcs/EiterGL97} is varying semantics for inference.
+
+\section{Abduction via Deduction}
+\label{sec:ded}
+
+From the above introduction, abduction and deduction seem to be distinct and it is not obvious how abduction can be implemented or programmed. It is however possible to derive the conclusions of abduction deductively.
+
+The \enquote{fundamental result} of \cite{DBLP:journals/logcom/ConsoleDT91} is \enquote{highlighting the bridge between abduction and deduction through the completion semantics}. We will use this section of the paper to familiarize ourselves with their result. In order to resemble the main theorem, we import Clark completion \cite{DBLP:conf/adbt/Clark77} as well as one meta-level and one object-level definition of abduction problems.
+
+Let us consider the concrete example ({\cite[p.~371]{DBLP:conf/aaai/Pearl87}} as cited in {\cite[p.~663]{DBLP:journals/logcom/ConsoleDT91}}) of a simple interpretation problem represented by the following domain theory $LP_1$:
+\begin{flalign*}
+T_1 = \{&& grass\_is\_wet &\from & rained\_last\_night, &&&\\
+&& grass\_is\_wet &\from & sprinkler\_was\_on, &&&\\
+&&grass\_is\_cold\_and\_shiny &\from & grass\_is\_wet, &&&\\
+&&shoes\_are\_wet &\from & grass\_is\_wet && \}&
+\end{flalign*}
+Now, assume that we want to obtain an explanation for our manifestation $M_1 \equiv grass\_is\_cold\_and\_shiny$. Intuitively, we will look at the theory and try to to follow implications from consequent to antecedent (resp.~right to left), starting at the observation and leading to the two atoms $rained\_last\_night$ and $sprinkler\_was\_on$. Indeed, in this case, the two atoms coincide with the two minimal explanations of $M_1$:
+\begin{align*}
+S_1 =& \{ rained\_last\_night \} \\
+S_2 =& \{ sprinkler\_was\_on \}
+\end{align*}
+More generally, we firstly notice that the only \enquote{sensible} explanations (or hypotheses) for our observation are the atoms that are reached last when intuitively following implications from consequent to antecedent: The set of atoms that do not occur in the head of any rule of the theory are called \emph{abducible atoms} (terminology from \cite{DBLP:conf/iclp/Eshghi88} as cited in {\cite[p.~664]{DBLP:journals/logcom/ConsoleDT91}}). Secondly, to reach a formal definition of the intuition, Clark completion \cite{DBLP:conf/adbt/Clark77}, a transformation that allows (again, intuitively) following implications of the theory in reverse is applied.
+
+The completion of non-abducible predicates of a theory $LP$, denoted $LP_C$ is formally defined in \cite{DBLP:journals/logcom/ConsoleDT91} as follows: The completion $LP_C$ is a set of equivalences $\{ p_i \leftrightarrow D_i | i = 1, \ldots, n \}$, where $p_1, \ldots p_n$ are all the non-abdicuble atoms in $T$ and $D_i \equiv Q_{i1} \vee \ldots \vee Q_{im}$ in case $\{ Q_{ij} \to p_i | j = 1, \ldots , m \}$ is the set of clauses in $LP$ having $P_i$ as their head. Applying this transformation to our example leads to:
+%\begin{definition}[{\cite[p.~668]{DBLP:journals/logcom/ConsoleDT91}}]
+%Given a theory $T$, and the \emph{(Clark) completion} of a theory $T$, denoted $T_C$ is a set of equivalences
+%TODO
+%$$T_C = \{ p \leftrightarrow D_i \ | \ p \text{ is a non-abducible atom in } T \text{ and } $$
+%\end{definition}
+\begin{flalign*}
+LP_{1,C} = \{&& grass\_is\_wet &\leftrightarrow & rained\_last\_night \vee sprinkler\_was\_on, &&&\\
+&&grass\_is\_cold\_and\_shiny &\leftrightarrow & grass\_is\_wet, &&&\\
+&&shoes\_are\_wet &\leftrightarrow & grass\_is\_wet && \}&
+\end{flalign*}
+Moreover, we require the theory $LP$ to be \emph{hierarchical}, meaning that it is possible to assign a rank to every atom such that for every rule in the theory the rank of the atoms in the head is strictly higher than the rank associated with any atom in the body of the rule. Practically this means that a directed graph where vertices map to atoms and edges map to body/head relationship in a rule is acyclic. The assumption is needed to show the termination of a procedure traversing the rules in a similar manner as above. Notice that abducible atoms will be of the lowest rank, and the strict order implies termination. \cite[cf. Section 3, p.~667, 669]{DBLP:journals/logcom/ConsoleDT91}
+
+Now that we have an intuition for what an abduction problem consists, a sense of what to expect as an explanation, and a rough idea of a transformation that will help generating the explanation, we go ahead with a definition of an abduction problem. Here, we use the more general definition from the framework postulated in \citep{DBLP:journals/tcs/EiterGL97}.
+% TODO Logic program?
+%\begin{definition}[{\cite[Definition 1, p.~668]{DBLP:journals/logcom/ConsoleDT91}}]
+%An \emph{abduction problem} is a pair $\langle T, \Psi \rangle$ where: \begin{itemize}
+%\item $T$ (the domain theory) is a hierarchical propositional logic program whose abducible atoms are the ones not %occurring in the head of any clause.
+%\item $\Psi$ (the observations to be explained) is a consistent conjunction of literals with no occurrence of abducible %atoms.
+%\end{itemize}
+%\end{definition}
+\begin{definition}[{\cite[Definition 1, p.~140]{DBLP:journals/tcs/EiterGL97}}]
+\label{def:lpap}
+Let $V$ be a set of propositional atoms. A logic programming abduction problem (LPAP) $\problem$ over $V$ consists of a tuple $\langle H, M, LP, \entails \rangle$ where $H \subseteq V$ is a finite set of hypotheses, $M \subseteq V \cup \{ \neg v | v \in V \}$ is a finite set of manifestations, $LP$ is a propositional logic program on $V$ and $\entails$ is an inference operator.
+\end{definition}
+\citet{DBLP:journals/logcom/ConsoleDT91} additionally require $LP$ to be hierarchical.
+
+With this, the next immediate question is how explanations can be characterized. A meta-level definition is presented first, and an object-level definition presented second.
+\begin{definition}%[{\cite[Definition 3, p.~671]{DBLP:journals/logcom/ConsoleDT91}} vs.~{\cite[Definition 2, p.~140]{DBLP:journals/tcs/EiterGL97}}]
+Let $\problem = \langle H, M, LP, \entails \rangle$ be a LPAP, and let $S \subseteq H$, then $S$ is a \emph{solution} (or \emph{m-explanation}) to (resp.~for) $\problem$ iff $LP \cup S \entails M$. The set of solutions of $\problem$ is denoted $\sol(\problem)$.
+\end{definition}
+\begin{remark}
+Two comments on the differences between the definition of an m-ex\-pla\-na\-tion in \cite[Definition 3, p.~671]{DBLP:journals/logcom/ConsoleDT91} and a solution in \citep[Definition 2, p.~140]{DBLP:journals/tcs/EiterGL97} for clarity: \citet{DBLP:journals/logcom/ConsoleDT91} restrict the reference operator to $\sldnf$, the SLDNF derivation, i.e.~the query evaluation procedure from \citep{DBLP:conf/adbt/Clark77}, while \citet{DBLP:journals/tcs/EiterGL97} were interested in a more general framework for arbitrary inference relations (elaborated in Section \ref{sec:fw}).
+Notation also slightly differs, as observations, called manifestations, are denoted $\Psi$ and solutions, called m-explanations, are denoted $E$ in \citep{DBLP:journals/logcom/ConsoleDT91}.
+\end{remark}
+\begin{definition}[adapted from {\cite[Definition 2, p.~669]{DBLP:journals/logcom/ConsoleDT91}}]
+Let $\problem = \langle H, M, LP, \sldnf \rangle$ be a  be a LPAP using SLDNF derivation and $LP_C$ the (Clark) completion of non-abducible predicates in $LP$. The \emph{explanation formula} for $\problem$ is the most specific formula $F$ in the language of abducible atoms such that: $$LP_C, M \entails F$$ where $F$ is more specific than $F'$ iff $\entails F \to F'$.
+\end{definition}
+With this, a procedure to compute an explanation formula $F$ is described in \citep{DBLP:journals/logcom/ConsoleDT91}, that produces $F$ from $LP_C$ by substituting non-abducible atoms $p_i$ with their $D_i$ counterpart from the completion until only abducible atoms are present. They argue that this procedure halts on the grounds that $LP$ is assumed to be hierarchical. That the sketched procedure indeed results in $F$ is shown in \citep[Theorem 1]{DBLP:journals/logcom/ConsoleDT91}.
+
+A correspondence between the object-level and meta-level definition of explanations for abduction problems, resembles the connection between deduction on the object level and abduction on the meta-level.
+\begin{theorem}[adapted from {\cite[Theorem 2, p.~671]{DBLP:journals/logcom/ConsoleDT91}}]\label{thm:abdded}
+Let $\problem = \langle H, M, LP, \vdash_{NF} \rangle$ be a  be a LPAP using SLDNF derivation having $F$ as the explanation formula. Let $S$ be a set of abducible atoms and $I$ an interpretation such that for every abducible atom $\alpha$ $$I \entails \alpha \text{  iff  } \alpha \in S$$ Then $S$ is a solution (an m-explanation) iff $S \entails F$.
+\end{theorem}
+Proof of Theorem \ref{thm:abdded} is omitted for brevity.
+
+Further \citet{DBLP:journals/logcom/ConsoleDT91} describe how above definitions can be extended to account for dependence between abducible atoms (additional knowledge about abducibles). They account for two types:
+\begin{itemize}
+\item \emph{taxonomic} or \emph{abstraction relationships} between abducible atoms, i.e.~implications of the form $$\alpha \to \beta$$ (where $\alpha$ and $\beta$ are abducible atoms);
+\item \emph{constraints} between abducible atoms in the form of denials, i.e.~of the form $$\neg(\alpha_1 \wedge \ldots \wedge \alpha_n)$$ where $\alpha_i, \ldots, \alpha_n$ are abducible atoms.
+\end{itemize}
+Again, transformations on the object level are described \cite[Section 4.1]{DBLP:journals/logcom/ConsoleDT91}, and correspondence with the meta-level \cite[Section 4.2]{DBLP:journals/logcom/ConsoleDT91} is shown.
+
+Lastly, they provide an extension to the first order case that stems on an \enquote{equality theory included in the completion} \citep[Section 5.1, p.~684]{DBLP:journals/logcom/ConsoleDT91}.
+
+\section{A Framework for Abduction Problems}
+\label{sec:fw}
+
+\citet{DBLP:journals/tcs/EiterGL97} formulated a general framework for abduction problems allowing variation in the semantics of inference and compared the complexity of common semantics.
+
+The flexibility of their framework is evident in Definition \ref{def:lpap}, which was already used in the previous section, as it allows for an arbitrary inference operator. They justify this by explaining that different semantics may be needed depending on the application domain.
+
+Briefly, they think that $\wf$, $\brave$, $\caut$ are of interest, defined as follows:
+
+\begin{definition}[see {\cite[Section 2]{DBLP:conf/iclp/GelfondL88}}]
+	Given a logic program $LP$ and an interpretation $I$, the \emph{Gelfond-Lifschitz transform} of $LP$ with respect to $I$, denoted $LP^I$ is defined as follows:
+\begin{flalign*}
+LP^I = \{ &a_1 \vee \ldots \vee a_m \from b_1, \ldots , b_k \ | &&\\
+	     &a_1 \vee \ldots \vee a_m \from b_1, \ldots, b_k, \fail b_{k+1}, \ldots, \fail b_n \in LP &\\
+	     &\text{ and } \{ b_{k+1} , \ldots , b_n \} \cap M = \emptyset \}
+\end{flalign*}
+\end{definition}
+Note that $LP^I$ is a Horn program.
+\begin{definition}
+Every Horn program $P$ has a least model $\lm(P)$. Given a logic program $LP$ and an interpretation $I$, $I$ is called a \emph{stable model} iff $I = \lm(LP^I)$. The collection of all stable models of $LP$ is denoted by $\stm(LP) = \{ I | I = \lm(LP^I) \}$.
+\end{definition}
+\begin{definition}[{\cite[p.~137]{DBLP:journals/tcs/EiterGL97}}]
+\emph{Brave reasoning} (or \emph{credulous reasoning}) infers that a literal $Q$ is true in $LP$ (denoted $LP \brave Q$) iff Q is true with respect to $M$ for \textbf{some} $M \in \stm(LP)$.
+\end{definition}
+\begin{definition}[{\cite[p.~137]{DBLP:journals/tcs/EiterGL97}}]
+\emph{Cautious reasoning} (or \emph{skeptical reasoning}) infers that a literal $Q$ is true in $LP$ (denoted $LP \brave Q$) iff (1) Q is true with respect to $M$ for \textbf{all} $M \in \stm(LP)$ and (2) $\stm(LP) \not = \emptyset$.
+\end{definition}
+The well-founded semantics described by \citet{DBLP:journals/jacm/GelderRS91} represent a progression from Clark completion \cite[Section 1.1]{DBLP:journals/jacm/GelderRS91}, discussed in Section \ref{sec:ded}. It involves three-valued models (adding $\bot$ as a \enquote{third, unknown truth value} to true and false) and so called \emph{unfounded sets}. A definition is omitted in this work for brevity and to avoid complexity. The most important takeaway is that the well-founded semantics infers that a literal $Q$ is true in $LP$, denoted $LP \wf Q$, iff it is true in the well-founded model, and that there is at most one such model (unlike with stable semantics, where there might be multiple stable models).
+
+It is interesting to note here that in the choice of single model ($\sldnf$ as in Prolog, and $\wf$) vs.~multiple model semantics (stable models in Answer Set Programming, and $\brave$, $\caut$ based on multiple models) for inference lies the reason for what is sometimes referred to as the \emph{Great Logic Programming Schism} \cite[Section 3, p.~13]{DBLP:conf/rweb/2009}.
+
+In \cite{DBLP:journals/tcs/EiterGL97} three important decision problems are highlighted: Given an LPAP $\problem = \langle H, M, LP, \entails \rangle$,\begin{enumerate} \setlength\itemsep{-1mm} \item does there exist a solution for $\problem$? (\emph{consistency}),
+\item is a given hypothesis $h \in H$ relevant for $\problem$, i.e., does $h$ contribute to some solution of $\problem$? (\emph{relevance}),
+\item is a given hypothesis $h \in H$ necessary for $\problem$, i.e., is $h$ contained in all solutions of $\problem$? (\emph{necessity}).
+\end{enumerate}
+
+They then continue to prove the complexity of solution verification ($S \in \sol(\problem)$), consistency checking ($\sol(\problem) \not = \emptyset$) and $\preceq$-relevance, -necessity of some $h \in H$ for LPAPs and disjunctive LPAPs ($LP$ disjunctive, see Definition \ref{def:lp}) where preference $\preceq$ is either minimality with respect to inclusion ($\subseteq$), cardinality ($\leq$) or no preference ($=$) along all three inference operators $\wf$, $\brave$, $\caut$. The results are that these problems are complete in the lower end of the polynomial hierarchy ($\Delta_2^P[O(\log(n)]$ to $\Sigma_4^P$), and allow for some interesting transformations between abduction problems of different semantics.
+
+\bibliography{ref}
+
+\end{document}
