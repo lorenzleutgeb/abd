@@ -2,7 +2,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[a4paper, top=4cm, bottom=4cm, left=4cm, right=4cm]{geometry}
-\usepackage[hidelinks]{hyperref}
+\usepackage{hyperref}
 \usepackage{graphicx}
 %\usepackage[urw-garamond]{mathdesign}
 \usepackage{csquotes}
@@ -30,6 +30,9 @@
 % Set of stable models (of a program).
 \newcommand{\stm}{\mathrm{STM}}
 \newcommand{\sol}{\mathrm{Sol}}
+\newcommand{\compl}{\mathrm{Co}}
+\newcommand{\groundext}{\mathrm{Gr}}
+\newcommand{\defense}{\mathrm{Def}_F}
 
 % Entails according to well founded semantics.
 \newcommand{\wf}{\ensuremath{\entails_{wf}}}
@@ -43,6 +46,10 @@
 % Selective Linear Definite-clause with Negation as Failure
 \newcommand{\sldnf}{\ensuremath{\vdash_{NF}}}
 
+\newcommand{\universe}{\mathcal{U}}
+\newcommand{\afs}{\mathcal{F}}
+\newcommand{\attacks}{\rightsquigarrow}
+
 \newtheorem{definition}{Definition}
 \newtheorem{example}{Example}
 \newtheorem{theorem}{Theorem}
@@ -52,11 +59,11 @@
 \begin{center}
 
 {\bfseries\Large{Abduction and Logic Programming}\\[3mm]}
-%Lorenz~Leutgeb \\ \href{mailto:e1127842@student.tuwien.ac.at}{\texttt{e1127842@student.tuwien.ac.at}}
+Lorenz~Leutgeb \\ \href{mailto:e1127842@student.tuwien.ac.at}{\texttt{e1127842@student.tuwien.ac.at}}
 
 \end{center}
 \begin{abstract}
-Abduction is a form of reasoning aimed at obtaining explanations for observations under a given theory. We summarize how abduction can be modeled by deduction for the case where the theory is a logic program. A framework that accommodates a wide range of abduction problems in view of different application domains by varying semantics of inference towards the explanation is used and explained.
+Abduction is a form of reasoning aimed at obtaining explanations for observations under a given theory. We summarize how abduction can be modeled by deduction for the case where the theory is a logic program. A framework that accommodates a wide range of abduction problems in view of different application domains by varying semantics of inference towards the explanation is used and described. Abduction can also be modeled by argumentation, which is closely related to logic programming. A correspondence is explored.
 \end{abstract}
 
 \section{Introduction}
@@ -64,17 +71,20 @@ Abduction is a form of reasoning aimed at obtaining explanations for observation
 
 Abduction, next to deduction and induction, is a form of logical reasoning where, given a theory and some observations, the goal is to find an explanation for the observations under the theory. It is a very intuitive reasoning task, carried out by the human mind in a continuous fashion, which somehow relates to what one might call \enquote{common sense}.
 
-This paper is a result of the fascination that abduction can be modeled by deduction (the connection is made clear in \cite{DBLP:journals/logcom/ConsoleDT91}). Logic programming as a versatile tool formalizing different kinds of abduction problems (a framework is suitable to cover various applications is proposed in \cite{DBLP:journals/tcs/EiterGL97}) is explored.
+This work is motivated by the fascination that abduction can be modeled by deduction and an interest in logic programming. It aims to establish links between three works that take different approaches to abduction:
 
-In this section, we import and establish context: First, revisiting logical reasoning we distinguish between deduction, induction and abduction using short examples. Secondly, logic programming (as a form of declarative programming) is informally described and very briefly contrasted with imperative programming, which is much more widespread in application.
-
-In Section \ref{sec:prelim}, we define logic programs as they are crucial to the works of \citet{DBLP:journals/logcom/ConsoleDT91} and \citet{DBLP:journals/tcs/EiterGL97}.
-
-In Section \ref{sec:ded} the connection between abduction and deduction described in \cite{DBLP:journals/logcom/ConsoleDT91} is elabroted, while in Section \ref{sec:fw} a framework generalizing abduction problems modeled by logic programming \cite{DBLP:journals/tcs/EiterGL97} is explained.
+\begin{description}
+	\item[Abduction via Deduction] In Section \ref{sec:ction} we revisit logical reasoning and establish an intuition for the three aforementioned forms of reasoning using short examples in order to explain how \citet{DBLP:journals/logcom/ConsoleDT91} achieve abduction through deduction in Section \ref{sec:ded}.
+	\item[A Framework for Abduction Problems] While \citet{DBLP:journals/tcs/EiterGL97} were mainly interested in surveying the complexity and discovering mappings between different abduction problems, they defined a versatile framework to talk about abduction problems as logic programs under given semantics. In Section \ref{sec:logprog} logic programming (as a form of declarative programming) is informally described and very briefly contrasted with imperative programming, which is much more widespread in application. A more formal perspective on logic programs is given in Section \ref{sec:prelim:lp}, as they are the foundation of Section \ref{sec:fw}, where said framework generalizing abduction problems modeled by logic programming is described.
+	\item[Abduction in Argumentation] Abstract argumentation is a more recent notion that closely relates to logic programming. We will introduce it in Section \ref{sec:arg}, and give a formal definition of argumentation frameworks in Section \ref{sec:prelim:af}. In Section \ref{sec:aaf} we will then explore how \citet{DBLP:conf/ecai/BoothGKRT14} model abduction in argumentation, and highlight the connection to logic programming.
+\end{description}
 
 \subsection{Deduction, Induction and Abduction}
+\label{sec:ction}
 
-We use the work of \citet{dih} to highlight the underlying schema and differences between three types of reasoning by means of syllogisms:
+We use the work of \citet{dih} to highlight the underlying schema and differences between three types of reasoning by means of syllogisms\footnote{The interested reader may refer to \cite{sep-abduction} resp.~\cite{peirce1940philosophical} in order to find out more about the philosophical roots of abduction or Peirce's Logic in general.}:
+
+\newpage
 
 \begin{center}
 Deduction\\[2mm]
@@ -89,7 +99,7 @@ Induction\\[2mm]
              & \emph{Case.}   & These beans are from this bag.\\
              & \emph{Result.} & These beans are white.\\
 $\therefore$ & \emph{Rule.}   & All the beans from this bag are white.
-\end{tabular}\newpage
+\end{tabular}\\[4mm]
 
 Abduction\\[2mm]
 \begin{tabular}{cll}
@@ -99,13 +109,11 @@ $\therefore$ & \emph{Case.}   & These beans are from this bag.
 \end{tabular}
 \end{center}
 
-The three types of reasoning are obtained by arranging rule, case and result so that two of them act as premises, concluding the third. Three examples: (1) Mathematics heavily depends on deduction to derive more explicit from basic axioms. (2) Physicists employ experiments and their results to derive rules, which can be regarded as induction. (3) A physician uses medical knowledge to explain the symptoms of his patient, a diagnosis obtained by abduction.
+The three types of reasoning are obtained by arranging \emph{Rule}, \emph{Case} and \emph{Result} so that two of them act as premises, concluding the third. Three examples: (1) Mathematics heavily depend on deduction to derive more explicit knowledge from basic axioms. (2) Physicists employ experiments and their results to derive the laws of physics, which can be regarded as induction. (3) A physician uses medical knowledge to explain the symptoms of her patient, a diagnosis obtained by abduction.
 
-To find out more about the philosophical roots of abduction or Peirce's Logic generally, refer to \cite{sep-abduction} resp.~\cite{peirce1940philosophical}.
+Abduction is of particular interest in the field of artificial intelligence, when it comes to generating explanations, diagnoses and plans but has also been successfully applied to speech recognition, vision and learning \cite[Introductions]{DBLP:journals/logcom/ConsoleDT91,DBLP:journals/tcs/EiterGL97}.
 
-Abduction is of particular interest in the field of artificial intelligence, when it comes to generating generating explanations, diagnoses and plans but has also been applied to speech recognition, vision and learning \cite[Introductions]{DBLP:journals/logcom/ConsoleDT91,DBLP:journals/tcs/EiterGL97}.
-
-In the above syllogism showing abduction, the rule corresponds with certain knowledge or a theory, while the result stands for an observation and the case maps to an explanation, diagnosis, plan and similar.
+In the above syllogism showing abduction, the \emph{Rule} corresponds with certain knowledge or a theory, while the \emph{Result} stands for an observation and the \emph{Case} maps to an explanation, diagnosis, plan and similar.
 
 It is important to note that abduction might result in multiple explanations and it is in general not sound, as some explanations (or diagnoses) may turn out false \cite{DBLP:journals/tcs/EiterGL97}. However, this is only at the meta-level, meaning that the theory can be adjusted to lead to better results.
 
@@ -114,19 +122,31 @@ It is important to note that abduction might result in multiple explanations and
 
 Logic programming is regarded a very powerful approach to declarative programming. Rather than an algorithm to solve a problem, the problem itself (and its solution, to some extent) is described. As a logic program does not define any kind of control flow, it is not executed directly, like imperative programs, but instead put into a solver (which in turn is also a program). Similar to how imperative programs are first written, then (in some cases) interpreted by an interpreter, a logic program is written and then solutions are obtained by a solver.
 
-Take the Clique problem for example: Given a graph its solution is the set of all fully connected subgraphs. Writing an imperative program (be it in Java, C\#, Go or a similar language) to solve Clique is not straightforward, though certainly a reasonable task for a second-semester computer science student. The student has to account for the control flow of the program, keep track of the solutions already obtained, and so forth. Using a non-hosted language she might even have to deal with allocating an deallocating memory. With logic programming in turn, the task of the programmer is just to formalize the problem in a way that the solver understands, which normally turns out to be the easier task.
+Take the Clique problem for example: Given a graph its solution is the set of all fully connected sub-graphs. Writing an imperative program (be it in Java, C\#, Go or a similar language) to solve Clique is not straightforward, though certainly a reasonable task for a second-semester computer science student. The student has to account for the control flow of the program, keep track of the solutions already obtained, and so forth. Using a non-hosted language she might even have to deal with allocating and deallocating memory. With logic programming in turn, the task of the programmer is just to formalize the problem in a way that the solver understands, which normally turns out to be the easier task.
 
 When first looking at the structure of logic programs (see Section \ref{sec:prelim}) the structure of the rules, essentially implications, appears strikingly similar to the deductive nature of mathematical logic. This makes logic programming an interesting vehicle for encoding theories and knowledge in the form of rules. What is not so obvious, is how these programs can be transformed in such a way that abduction is modeled deductively, as we will see in Section \ref{sec:ded}.
 
 For an introduction to and overview of Answer Set Programming, see \cite{DBLP:conf/rweb/EiterIK09}.
 
+\subsection{Abstract Argumentation}
+\label{sec:arg}
+
+Abstract argumentation introduced by \citet{DBLP:journals/ai/Dung95} is an active field of artificial intelligence research. While the field was inspired by the human capability \enquote{to understand new concepts, to perform scientific reasoning, to express, clarify defend their opinions in their daily lives} through argumentation and dialogue, its core notion of an argumentation framework (see Definition \ref{def:af}) is best understood as a set of arguments that might conflict with one another. This makes abstract argumentation interesting for problems where conflict resolution is key.\footnote{For an introductory lecture refer to \cite{baroni}.}
+
+Exploiting the simplicity of AFs, many semantics were presented that define how to compute extensions from an AF and therefore what constitutes a desirable (sub-)set of arguments. These semantics are competing in some sense and inspire new lines of research. Identifying classes of semantics, i.e.~using pairwise agreement on solutions between semantics and other relations, is also active research.
+
+Also, \citet{DBLP:journals/ai/Dung95} argues that \enquote{many major approaches to nonmonotonic reasoning in AI and logic programming are in fact different forms of [abstract argumentation]} \cite[Introduction, p.~325]{DBLP:journals/ai/Dung95}. Through this connection we will look at how abduction from logic programming fits into the paradigm of argumentation frameworks as laid out by \citet{DBLP:conf/ecai/BoothGKRT14}.
+
 \section{Preliminaries}
 \label{sec:prelim}
 
-We briefly revisit the logic programs, as they are fundamental to both \citep{DBLP:journals/logcom/ConsoleDT91} and \cite{DBLP:journals/tcs/EiterGL97}.
+We briefly revisit logic programs, as they are fundamental to both \citep{DBLP:journals/logcom/ConsoleDT91} and \cite{DBLP:journals/tcs/EiterGL97}.
+
+\subsection{Logic Programs}
+\label{sec:prelim:lp}
 
 \begin{definition}[{see \cite[Slide 15]{ewbs}}]
-	A \emph{rule} is an ordered pair of the form $$a_1 \vee \ldots \vee a_m \from b_1 \wedge \ldots \wedge b_k \wedge \fail b_{k+1} \wedge \ldots \wedge \fail b_n$$ where $a_1, \ldots, a_m, b_1, \ldots, b_n$ are literals, $\mathrm{not}$ is \emph{negation as failure} (or \emph{default negation}), $a_1 \vee \ldots a_m$ is the \emph{head} of $r$ and $b_1, \ldots, b_k, \fail b_{k+1}, \ldots, \fail b_n$ is the \emph{body} of $r$.
+	A \emph{rule} is an ordered pair of the form $$a_1 \vee \ldots \vee a_m \from b_1 \wedge \ldots \wedge b_k \wedge \fail b_{k+1} \wedge \ldots \wedge \fail b_n$$ where $a_1, \ldots, a_m, b_1, \ldots, b_n$ are literals, $\mathrm{not}$ is \emph{negation as failure} (or \emph{default negation}), $a_1 \vee \ldots \vee a_m$ is the \emph{head} of $r$ and $b_1, \ldots, b_k, \fail b_{k+1}, \ldots, \fail b_n$ is the \emph{body} of $r$.
 	
 	Some more concrete classes of rules are of interest: A rule is a \emph{fact} if $n = 0$ and $m \geq 1$; \emph{basic} if $n = k$ and $m \geq 1$; \emph{non-disjunctive} if $m = 1$; \emph{normal} if it is non-disjunctive and contains no strong negation $\neg$; \emph{Horn} if it is normal and basic; \emph{ground} if all its literals are ground.
 \end{definition}
@@ -135,7 +155,17 @@ We briefly revisit the logic programs, as they are fundamental to both \citep{DB
 	A logic program (usually denoted $LP$) is a finite set of rules. Analogous to the classification of a rule, a program is basic, normal, Horn etc. if all of its rules are.
 \end{definition}
 
-When evaluating logic programs, there is no canonical semantics, especially considering incomplete information and default negation. Two possible approaches are described in \ref{sec:fw}, as the core idea of the framework in \cite{DBLP:journals/tcs/EiterGL97} is varying semantics for inference.
+When evaluating logic programs, there is no canonical semantics, especially considering incomplete information and default negation. Two possible approaches are described in Section \ref{sec:fw}, as the core idea of the framework in \cite{DBLP:journals/tcs/EiterGL97} is varying semantics for inference.
+
+\subsection{Argumentation Frameworks}
+\label{sec:prelim:af}
+
+In Section \ref{sec:arg} we will build upon the notion of argumentation frameworks (AF).
+
+\begin{definition}[{originally \cite[Definition~2]{DBLP:journals/ai/Dung95}, taken from \cite[Definition~1]{DBLP:conf/ecai/BoothGKRT14}}]
+\label{def:af}
+Given a countable infinite set $\universe$ called the \emph{universe of arguments}, an \emph{argumentation framework (AF)} is a pair $F = (A, \attacks)$ where $A$ is a finite subset of $\universe$ and $\attacks$ a binary relation over $A$. If $a \attacks b$ we say that $a$ \emph{attacks} $b$. $\afs$ denotes the set of all argumentation frameworks.
+\end{definition}
 
 \section{Abduction via Deduction}
 \label{sec:ded}
@@ -151,14 +181,14 @@ T_1 = \{&& grass\_is\_wet &\from & rained\_last\_night, &&&\\
 &&grass\_is\_cold\_and\_shiny &\from & grass\_is\_wet, &&&\\
 &&shoes\_are\_wet &\from & grass\_is\_wet && \}&
 \end{flalign*}
-Now, assume that we want to obtain an explanation for our manifestation $M_1 \equiv grass\_is\_cold\_and\_shiny$. Intuitively, we will look at the theory and try to to follow implications from consequent to antecedent (resp.~right to left), starting at the observation and leading to the two atoms $rained\_last\_night$ and $sprinkler\_was\_on$. Indeed, in this case, the two atoms coincide with the two minimal explanations of $M_1$:
+Now, assume that we want to obtain an explanation for our manifestation $M_1 \equiv grass\_is\_cold\_and\_shiny$, that is we ask ourselves: "Why might the grass be shiny?" Intuitively, we will look at the theory and try to to follow implications from consequent to antecedent (resp.~left to right), starting at the observation and leading to the two atoms $rained\_last\_night$ and $sprinkler\_was\_on$. Indeed, in this case, the two atoms coincide with the two minimal explanations of $M_1$:
 \begin{align*}
 S_1 =& \{ rained\_last\_night \} \\
 S_2 =& \{ sprinkler\_was\_on \}
 \end{align*}
 More generally, we firstly notice that the only \enquote{sensible} explanations (or hypotheses) for our observation are the atoms that are reached last when intuitively following implications from consequent to antecedent: The set of atoms that do not occur in the head of any rule of the theory are called \emph{abducible atoms} (terminology from \cite{DBLP:conf/iclp/Eshghi88} as cited in {\cite[p.~664]{DBLP:journals/logcom/ConsoleDT91}}). Secondly, to reach a formal definition of the intuition, Clark completion \cite{DBLP:conf/adbt/Clark77}, a transformation that allows (again, intuitively) following implications of the theory in reverse is applied.
 
-The completion of non-abducible predicates of a theory $LP$, denoted $LP_C$ is formally defined in \cite{DBLP:journals/logcom/ConsoleDT91} as follows: The completion $LP_C$ is a set of equivalences $\{ p_i \leftrightarrow D_i | i = 1, \ldots, n \}$, where $p_1, \ldots p_n$ are all the non-abdicuble atoms in $T$ and $D_i \equiv Q_{i1} \vee \ldots \vee Q_{im}$ in case $\{ Q_{ij} \to p_i | j = 1, \ldots , m \}$ is the set of clauses in $LP$ having $P_i$ as their head. Applying this transformation to our example leads to:
+The completion of non-abducible predicates of a theory $LP$, denoted $LP_C$ is formally defined in \cite{DBLP:journals/logcom/ConsoleDT91} as follows: The completion $LP_C$ is a set of equivalences $\{ p_i \leftrightarrow D_i | i = 1, \ldots, n \}$, where $p_1, \ldots p_n$ are all the non-abdicuble atoms in $LP$ and $D_i \equiv Q_{i1} \vee \ldots \vee Q_{im}$ in case $\{ Q_{ij} \to p_i | j = 1, \ldots , m \}$ is the set of clauses in $LP$ having $p_i$ as their head. Applying this transformation to our example leads to:
 %\begin{definition}[{\cite[p.~668]{DBLP:journals/logcom/ConsoleDT91}}]
 %Given a theory $T$, and the \emph{(Clark) completion} of a theory $T$, denoted $T_C$ is a set of equivalences
 %TODO
@@ -230,7 +260,7 @@ LP^I = \{ &a_1 \vee \ldots \vee a_m \from b_1, \ldots , b_k \ | &&\\
 	     &\text{ and } \{ b_{k+1} , \ldots , b_n \} \cap M = \emptyset \}
 \end{flalign*}
 \end{definition}
-Note that $LP^I$ is a Horn program.
+Note that if $LP$ is non-disjunctive, then $LP^I$ is a Horn program.
 \begin{definition}
 Every Horn program $P$ has a least model $\lm(P)$. Given a logic program $LP$ and an interpretation $I$, $I$ is called a \emph{stable model} iff $I = \lm(LP^I)$. The collection of all stable models of $LP$ is denoted by $\stm(LP) = \{ I | I = \lm(LP^I) \}$.
 \end{definition}
@@ -250,6 +280,62 @@ In \cite{DBLP:journals/tcs/EiterGL97} three important decision problems are high
 \end{enumerate}
 
 They then continue to prove the complexity of solution verification ($S \in \sol(\problem)$), consistency checking ($\sol(\problem) \not = \emptyset$) and $\preceq$-relevance, -necessity of some $h \in H$ for LPAPs and disjunctive LPAPs ($LP$ disjunctive, see Definition \ref{def:lp}) where preference $\preceq$ is either minimality with respect to inclusion ($\subseteq$), cardinality ($\leq$) or no preference ($=$) along all three inference operators $\wf$, $\brave$, $\caut$. The results are that these problems are complete in the lower end of the polynomial hierarchy ($\Delta_2^P[O(\log(n)]$ to $\Sigma_4^P$), and allow for some interesting transformations between abduction problems of different semantics.
+
+\section{Abduction in Argumentation}
+\label{sec:aaf}
+
+In this section we will take a closer look at the work of \citet{DBLP:conf/ecai/BoothGKRT14}, which expanding on the definition of an argumentation framework (AF), introduces abductive argumentation frameworks (AAF).
+
+First, given an AF $F = (A, \attacks)$ we need to recognize how abduction can be expressed: An observation maps to a set of arguments $X \subseteq A$, \enquote{that each individually supports the observation} \cite[p.~118]{DBLP:conf/ecai/BoothGKRT14} and the goal is finding an explanation, argumentation framework $G$ that supports $X$.
+
+\begin{remark}
+In the work of \citet{DBLP:conf/ecai/BoothGKRT14} there is no clear distinction of \emph{Rule} (theory), \emph{Result} (observation) and \emph{Case} (explanation) (referring to the syllogisms from Section \ref{sec:ction}). Theory (which seems to be entangled with the observation) and explanation both are AFs while the observation is a set of arguments, but the connection is not clearly explained. Further, it is unclear what \enquote{supports the observation} means. They define an AF supporting an observation, but not an argument supporting an observation.
+\end{remark}
+
+In analogy to $\caut$ and $\brave$, \citet{DBLP:conf/ecai/BoothGKRT14} define skeptical and credulous support of an observation, based on the complete semantics.
+
+\begin{definition}[{\cite[Defintion 2]{DBLP:conf/ecai/BoothGKRT14}}]
+Let $F = (A, \attacks)$. An extension of $F$ is a set $E \subseteq A$. An extension $E$ is conflict-free iff for no $a, b \in E$ it holds that $a \attacks b$. An argument $a \in A$ is defended by $E$ iff for all $b$ such that $b \attacks a$ there is a $c \in E$ such that $c \attacks b$. Given an extension $E$, we define $\defense(E)$ by $\defense(E) = \{ a \in A \ | \ E \text{ defends } a \}$. An extension $E$ is admissible iff $E$ is conflict-free and $E \subseteq \defense(E)$, and complete iff $E$ is conflict-free and $E = \defense(E)$. The set of complete extensions of $F$ will be denoted by $\compl(F)$. Furthermore, the grounded extension (denoted by $\groundext(F)$) is the unique $\subseteq$-minimal complete extension of $F$.
+\end{definition}
+
+\begin{definition}
+Given an AF $F = (A, \attacks)$, an observation $X \subseteq A$ is skeptically (resp. credulously) supported iff for all (resp. some) $E \in \compl(F)$ it holds that $x \in E$ for some $x \in X$.
+\end{definition}
+
+Now it might be the case that an AF $F$ does not skeptically or credulously support an observation $X$. In this case, the goal is to find a new AF $G$ that in turn supports $X$. We arrive at the definition of an abductive argumentation framework.
+
+\begin{definition}
+An \emph{abductive argumentation framework} is a pair $M = (F, I)$ where $F$ is an argumentation framework and and $I \subseteq \mathcal{F}$ a set of argumentation frameworks called \emph{abducible} such that $F \in I$.
+\end{definition}
+
+As expected, an AAF $M = ( F, I )$ skeptically (resp.~credulously) explains an observation $X$ if any $G \in I$ skeptically (resp.~credulously) supports $X$. We continue to highlight the connection between $F$ and $G \in I$ through logic programming.
+
+For correspondence between AAFs and logic programs \citet{DBLP:conf/ecai/BoothGKRT14} rely on results by \citet{DBLP:journals/sLogica/WuCG09}, whereby \enquote{a logic program $LP$ over $V$ can be transformed into an AF $F$ such that the consequences of $P$ under the partial stable semantics\footnote{Note that according to \citet{DBLP:journals/fuin/Przymusinski90} this semantics coincides with the well-founded semantics that is part of the survey in \cite{DBLP:journals/tcs/EiterGL97} and very briefly mentioned in Section \ref{sec:fw}.} can be computed by looking at the complete extensions of $F$. The idea is that an argument consists of a conclusion $C \in V$, a set of rules $R \subseteq LP$ used to derive $C$ and a set $N \subseteq V$ of atoms that must be underivable in order for the argument to be acceptable} (quoting from \cite{DBLP:conf/ecai/BoothGKRT14}, edited for the same notation as in Sections \ref{sec:ded} and \ref{sec:fw}). Such a triple $(C, R, N)$ represents an \emph{instantiated argument} which is said to be \emph{generated}\footnote{A formal definition of a logic program \emph{generating} an instantiated argument is omitted for brevity. See \cite[Definition 13]{DBLP:conf/ecai/BoothGKRT14}} from $LP$ and the set of arguments generated by $LP$ is denoted $A_{LP}$. The attack relation generated by $LP$, denoted $\attacks_{LP}$, is defined by $(C, R, N) \attacks_{LP} (C', R', N')$. With this we have the established the link between AFs and logic programming: For a logic program $LP$ over $V$, an atom $C \in V$ is a skeptical (resp.~credulous) consequence of $LP$ iff some $(C, R, N) \in A_{LP}$ is skeptically (resp.~credulously) accepted in $(A_{LP}, \attacks_{LP})$.
+
+In the instantiated setting by \citet{DBLP:conf/ecai/BoothGKRT14} the definition of a hypothesis with respect to a logic program $LP$ over $V$ differs from hypotheses as per Definition \ref{def:lpap} (and therefore from the framework defined by \citet{DBLP:journals/tcs/EiterGL97}): Now we look at pairs $(\Delta^+, \Delta^-)$ where $\Delta^+$ and $\Delta^-$ are sets of abducibles (which in turn are in $V$). $\Delta^+$ means added abducibles and complements the removed abducibles denoted $\Delta^-$. Thus a hypothesis skeptically (resp.~credulously) explains a query $Q \in V$ iff $Q$ is a skeptical (resp.~credulous) consequence of $(LP \cup \Delta^+) \setminus \Delta^-$. With this we can explain the connection between $F$ and $G \in I$ for an AAF $F = (G, I)$.
+
+\begin{definition}[{\cite[Definition 16]{DBLP:conf/ecai/BoothGKRT14} edited for the same notations as in Sections \ref{sec:ded} and \ref{sec:fw}}]
+Given a logic program $LP$ over $V$ and a hypothesis $(\Delta^+, \Delta^-)$, we denote by $F_{(\Delta^+, \Delta^-)}$ the AF $(A_{(LP \cup \Delta^+) \setminus \Delta^-}, \attacks_{(LP \cup \Delta^+) \setminus \Delta^-})$. The AAF \emph{generated by} $LP$ is denoted by $M_{LP}$ and defined by $M_{LP} = ((A_{LP}, \attacks_{LP}), I_{LP})$, where $I_{LP} = \{ F_{(\Delta^+, \Delta^-)} \ | \ \Delta^+, \Delta^- \subseteq V, \Delta^+ \cap \Delta^- = \emptyset \}$.
+\end{definition}
+
+\citet{DBLP:conf/ecai/BoothGKRT14} conclude that their model of abduction in argumentation is an abstraction of abductive logic programming.
+
+\section{Conclusion}
+\label{sec:con}
+
+While the main motivation of this work was the fascination for abduction, i.e.~how a computer might attempt common-sense reasoning, a goal was also to deepen understanding of logic programming and to get behind how it can implement abduction. This fits a bigger picture towards combining symbolic (knowledge representation via logic programming) and non-symbolic perspectives (neural networks) on artificial intelligence, which we regard as an important field of research in the coming years.
+
+\subsection{Summary}
+
+Concerning the three preceding sections, key take-aways are that (1) abduction from logic programs, while this problem appears so intangible at first, can mapped to deduction in a straightforward manner, (2) complexities of important decision problems arising from abduction reside within the polynomial hierarchy, with interesting mappings between them, and (3) unsurprisingly argumentation can generalize abduction with a strong connection to logic programming.
+
+We made an effort to introduce abduction, induction and deduction by example, in order to juxtapose abduction and deduction in Section \ref{sec:ded}. The connection between Section \ref{sec:ded} and Section \ref{sec:fw} is explicit in that we used the framework described in the latter for our definition and reasoning in the former. Further, the connection between Section \ref{sec:fw} and Section \ref{sec:aaf} is twofold: (1) The notion of credulous and skeptical acceptance of an argument, and the truth of an atom under the credulous and skeptical semantics are strikingly familiar. (2) The close link between logic programs and argumentation frameworks (that even was highlighted in the initial work by \citet{DBLP:journals/ai/Dung95}) invites to reason about AAFs inside the framework defined by \citet{DBLP:journals/tcs/EiterGL97}.
+
+\subsection{Open Questions}
+
+The question on how logic programs generating AAFs (the result from \citet{DBLP:journals/sLogica/WuCG09} as discussed in Section \ref{sec:aaf}) can be integrated into the framework by \citet{DBLP:journals/tcs/EiterGL97} remains open: How can hypotheses of the form $(\Delta^+, \Delta^-)$ (with $\Delta^+, \Delta^- \subseteq V$) on the one side be mapped to hypotheses of the form $H \subseteq V$ on the other side, where $V$ is the set of atoms?
+
+Also, the explanation dialogues detailed in \cite[Section 4]{DBLP:conf/ecai/BoothGKRT14} were not touched on in this work. They constitute an interesting variant of dialogical proof using hypothetical moves, however the connection to logic programming is not straightforward.
 
 \bibliography{ref}
 
